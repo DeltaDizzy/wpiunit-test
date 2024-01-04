@@ -172,7 +172,7 @@ out/
 *-window.json
 
 # CTRE sim files
-ctre_sim/*.dat
+ctre_sim/
 
 # WPILogs
 logs/*.wpilog
