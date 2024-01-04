@@ -4,6 +4,7 @@
 
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.DutyCycleOut;
@@ -31,10 +32,15 @@ import java.util.function.DoubleSupplier;
 import edu.wpi.first.units.Velocity;
 import edu.wpi.first.units.Voltage;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import edu.wpi.first.wpilibj.sysid.MotorLog;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
+import frc.robot.Robot;
 import frc.robot.Constants.DriveConstants;
 import frc.robot.subsystems.simulation.DriveSim;
 
@@ -63,18 +69,19 @@ public class Drive extends SubsystemBase {
   MutableMeasure<Voltage> sysidVolts = Volts.of(0).mutableCopy();
   MutableMeasure<Distance> sysidDistance = Meters.of(0).mutableCopy();
   MutableMeasure<Velocity<Distance>> sysidVelocity = MetersPerSecond.of(0).mutableCopy();
+  Trigger sysidSkip;
 
   // Controls
-  DifferentialDrive drive = new DifferentialDrive(frontLeft, frontRight);
+  DifferentialDrive drive = new DifferentialDrive(new MotorControllerGroup(frontLeft, backLeft), new MotorControllerGroup(frontRight, backRight));
   DifferentialDriveKinematics kinematics = new DifferentialDriveKinematics(DriveConstants.trackWidth.in(Meters));
-  DifferentialDrivePoseEstimator poseEstimator = new DifferentialDrivePoseEstimator(kinematics, gyro.getRotation2d(), leftDistance.getValue(), rightDistance.getValue(), new Pose2d(0, 0, new Rotation2d()));
+  DifferentialDrivePoseEstimator poseEstimator = new DifferentialDrivePoseEstimator(kinematics, gyro.getRotation2d(), leftDistance.getValue(), rightDistance.getValue(), new Pose2d(0, 3, new Rotation2d()));
   DriveSim sim;
   private final StructPublisher<Pose2d> posePublish = NetworkTableInstance.getDefault().getTable("Robot").getStructTopic("Pose", Pose2d.struct).publish();
 
   /** Creates a new Drive. */
   public Drive() {
     configureMotors();
-    sim = new DriveSim(frontLeft.getSimState(), frontRight.getSimState(), gyro.getSimState(), poseEstimator);
+    sim = new DriveSim(frontLeft, frontRight, backLeft, backRight, gyro, poseEstimator, posePublish);
   }
 
   private void configureMotors() {
@@ -125,10 +132,31 @@ public class Drive extends SubsystemBase {
     motorLog.recordFrameLinear(sysidVolts, sysidDistance, sysidVelocity, "right");
   }
 
+  public void setSysidSkipTrigger(Trigger skipButton) {
+    sysidSkip = skipButton;
+  }
+
+  public Command characterize() {
+    return Commands.sequence(
+      runOnce(() -> SignalLogger.start()),
+      Commands.waitSeconds(1),
+      sysIdRoutine.quasistatic(Direction.kForward).until(sysidSkip).withTimeout(15),
+      Commands.waitSeconds(1),
+      sysIdRoutine.quasistatic(Direction.kReverse).until(sysidSkip).withTimeout(15),
+      Commands.waitSeconds(1),
+      sysIdRoutine.dynamic(Direction.kForward).until(sysidSkip).withTimeout(5),
+      Commands.waitSeconds(1),
+      sysIdRoutine.dynamic(Direction.kReverse).until(sysidSkip).withTimeout(5),
+      runOnce(() -> SignalLogger.stop())
+    ).withName(getName() + " Characterization");
+  }
+
   @Override
   public void periodic() {
-    poseEstimator.update(gyro.getRotation2d(), leftDistance.getValue(), rightDistance.getValue());
-    posePublish.set(poseEstimator.getEstimatedPosition());
+    if (Robot.isReal()) {
+      poseEstimator.update(gyro.getRotation2d(), leftDistance.getValue(), rightDistance.getValue());
+      posePublish.set(poseEstimator.getEstimatedPosition());
+    }
   }
 
   @Override

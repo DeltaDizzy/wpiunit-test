@@ -11,6 +11,7 @@ import static edu.wpi.first.units.Units.*;
 
 /** Add your docs here. */
 public class Constants {
+    public static final double triggerDeadband = 0.05;
     public static class DriveConstants {
         public static final double gearRatio = 26.0;
         public static final Measure<Distance> wheelRadius = Inches.of(6.0);

@@ -44,6 +44,8 @@ public class SysIdRoutineLog implements MotorLog {
     kQuasistaticReverse("quasistatic-reverse"),
     kDynamicForward("dynamic-forward"),
     kDynamicReverse("dynamic-reverse"),
+    kStairstepForward("stairstep-forward"),
+    kStairstepReverse("stairstep-reverse"),
     kNone("none");
 
     private final String m_state;

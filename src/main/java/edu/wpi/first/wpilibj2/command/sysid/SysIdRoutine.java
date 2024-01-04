@@ -263,4 +263,16 @@ public class SysIdRoutine extends SysIdRoutineLog {
         .withName("sysid-" + state.toString() + "-" + m_mechanism.m_name)
         .withTimeout(m_config.m_timeout.in(Seconds));
   }
+
+  /*public Command stairstep(Direction direction) {
+    double outputSign = direction == Direction.kForward ? 1.0 : -1.0;
+    State state = Map.ofEntries(
+      entry(Direction.kForward, State.kStairstepForward),
+      entry(Direction.kReverse, State.kStairstepReverse)
+    ).get(direction);
+
+    return m_mechanism
+        .m_subsystem
+        .runOnce(null)
+  }*/
 }
